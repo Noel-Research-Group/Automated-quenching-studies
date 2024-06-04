@@ -16,7 +16,7 @@ class Device:
         self.serialObj = serial.Serial()
         self.serialObj.timeout = 1
         self.serialObj.baudrate = baudrate
-        self.serialObj.port = "COM%s" % str(comnumber)  # com port name start from 0
+        self.serialObj.port = comnumber  # com port name start from 0
         self.serialObj.open()  # opens serial port
 
         # print port open or closed
@@ -25,7 +25,8 @@ class Device:
         self.logger.debug('The following serial port is now open: {0}'.format(self.serialObj.portstr))
 
     def __str__(self):
-        print(self.name)
+        pass
+        # print(self.name)
 
 class Autosampler(Device):
     def __init__(self, comnumber=1, baudrate=9600, name='Jack'):
@@ -47,12 +48,15 @@ class Autosampler(Device):
                 self.logger.debug('Auto sampler is available.')
             else:
                 checkAvailability = True
+                print('Auto sampler is not available. answer is: {}'.format(answer))
                 self.logger.debug('Auto sampler is not available. answer is: {}'.format(answer))
 
     def SendCommand(self, task, message, send=1):
         # send a command to the autosampler
         message = '6101{0}{1}'.format(task, message)
-        mss = str.encode(chr(2) + message + chr(3))
+        mss = (chr(2) + message + chr(3)).encode('ascii')
+        # mss = message.encode()
+
         self.serialObj.write(mss)
 
         self.logger.debug('The following message was send to the autosampler: {}.'.format(message))
