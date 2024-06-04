@@ -64,11 +64,24 @@ known_commands = {
     '0107'
 }  # Example known commands
 
-autosampler = Autosampler()
+# autosampler = Autosampler()
 # Iterate over all 4-digit combinations
+
+print('''
+   __                                __            _   ___       _   
+  /__\ _____   _____ _ __ ___  ___  /___ __   __ _(_) / __\ ___ | |_ 
+ / \/// _ \ \ / / _ | '__/ __|/ _ \/_\| '_ \ / _` | |/__\/// _ \| __|
+/ _  |  __/\ V |  __| |  \__ |  __//__| | | | (_| | / \/  | (_) | |_ 
+\/ \_/\___| \_/ \___|_|  |___/\___\__/|_| |_|\__, |_\_____/\___/ \__|
+                                             |___/                   
+
+Good Morning Hackers! let's try to hack the Autosampler!
+
+''')
 for combo in itertools.product("0123456789", repeat=4):
     command = "".join(combo)
     print(f"Trying command {command} ...")
+    print(f"Processed commands: {len(processed_commands)} That is {len(processed_commands) / 10000 * 100}%")
 
     # Skip if already processed
     if command in processed_commands or command in known_commands:
