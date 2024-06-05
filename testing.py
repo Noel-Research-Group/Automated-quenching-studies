@@ -64,7 +64,7 @@ known_commands = {
     '0107'
 }  # Example known commands
 
-# autosampler = Autosampler()
+autosampler = Autosampler(comnumber='/dev/tty.usbserial-FTALDLQA', baudrate=9600)
 # Iterate over all 4-digit combinations
 
 print('''
@@ -89,10 +89,9 @@ for combo in itertools.product("0123456789", repeat=4):
 
     # Send command to the Autosampler
     response = autosampler.SendCommand(command, message='000000', send = 0)
-
+    print("Response: ", response)
     # Check if the command was recognized
     if response != "\x15":
-        valid_commands.append(command)
         save_progress(valid_commands_file, command)
 
     # Mark command as processed
