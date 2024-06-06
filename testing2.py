@@ -4,7 +4,7 @@ github: github.com/EliaSavino
 
 Happy Hacking!
 
-Descr:
+Descr: Second set of tests for the Autosampler
 
 '''
 
@@ -16,23 +16,74 @@ from DeviceClasses import Autosampler, Device
 
 class Machine(Autosampler):
     def __init__(self, comnumber, baudrate):
-        return
         Device.__init__(self, comnumber, baudrate)
+        self.timeout = 1
         self.CheckAvailability()
 
-    def timedSendCommand(self, task, message, send):
-        '''Send a command and time it'''
-        raise TimeoutError("Command took too long to execute")
-        start = time.time()
-        response = self.SendCommand(task, message, send)
-        end = time.time()
-        if start - end > 5.0:
-            raise TimeoutError(f"Command {task} took too long to execute")
+    def construct_message(self, ai, task, message):
+        command_message = '61{0}{1}{2}'.format(ai, task, message)
+        return (chr(2) + command_message + chr(3)).encode('ascii')
+
+    def wait_for_answer(self):
+        start_time = time.time()
+        while True:
+            answer = self.serialObj.readline()
+            if len(answer) > 0:
+                answer_decoded = answer.decode()
+                return self.decode_response(answer_decoded)
+            if time.time() - start_time > self.timeout:
+                self.logger.debug('Nothing returned from the autosampler.')
+                return 'nothing returned'
+            time.sleep(0.1)
+            self.logger.debug('No answer from the autosampler yet.')
+
+    def decode_response(self, response):
+        if response == chr(6):
+            decoded_response = 'Ack'
+        elif response == chr(21):
+            decoded_response = 'Nack'
+        elif response == chr(8):
+            decoded_response = 'Nack0'
         else:
-            return response
+            decoded_response = response
+        self.logger.debug('Decoded response: {}'.format(decoded_response))
+        return decoded_response
 
+    def send_follow_up(self, task, send_type):
+        if send_type in ['SP', 'SA']:
+            follow_up_message = '6101{0}0000{1}'.format('10' if send_type == 'SP' else '00', task)
+            mss = str.encode(chr(2) + follow_up_message + chr(3))
+            self.serialObj.write(mss)
+            self.logger.debug(
+                'The follow-up message was successfully sent to the autosampler: {}.'.format(follow_up_message))
+            return self.wait_for_answer()
 
+    def send_command(self, task, message, send='none', ai='01'):
+        # Construct the command message
+        mss = self.construct_message(ai, task, message)
 
+        self.serialObj.write(mss)
+        self.logger.debug('The following message was sent to the autosampler: {}.'.format(mss.decode('ascii')))
+
+        # Wait for an answer
+        answer = self.wait_for_answer()
+
+        # Handle follow-up send command
+        if send in ['SP', 'SA'] and answer != 'nothing returned':
+            answer = self.send_follow_up(task, send)
+            self.logger.debug('Autosampler gave the following answer: {} to the follow-up request.'.format(answer))
+
+        return answer
+
+    def check_status(self):
+        '''Check the status of the autosampler'''
+        response = self.send_command('1001', '000152')
+        return response
+
+    def check_errors(self):
+        '''Check the errors of the autosampler'''
+        response = self.send_command('1001', '000155')
+        return response
 def load_excel(file_path):
     '''Load the excel file and return the data'''
     data = pd.read_csv(file_path)
@@ -81,7 +132,7 @@ def main():
                         result = 'none'
                     else:
                         result = 'fail'
-
+                    print(f"Command {code} with value {value} returned {response}")
                 except TimeoutError:
                     result = 'fail'
                     print(f"Command {code} took too long to execute, please do machine nap and resume")
@@ -102,6 +153,32 @@ def main():
         return
 
     print("All commands executed")
+
+
+def main2():
+    """same as before, however now it tries the ones that returned a pass and records the response"""
+    file_path = '/Users/es/Documents/PhD/Experiments/reverseEgnineeringMaster.csv'
+    result_path = '/Users/es/Documents/PhD/Experiments/reverseEgnineeringMasterResults.csv'
+    port = '/dev/tty.usbserial-FTALDLQA'
+    autosampler = Machine(comnumber=port, baudrate=9600)
+
+
+    if not os.path.exists(file_path):
+        print(f"File not found at {file_path}")
+        return
+
+    data = pd.read_csv(file_path, header = 0, dtype = str)
+
+    if not os.path.exists(result_path):
+        pass
+    else:
+        results = pd.read_csv(result_path, header=0, dtype=str)
+
+    codes = data['Command']
+    values = ['000000', '000001', '000010', '000100', '001000']
+
+
+
 
 if __name__ == '__main__':
     print("Hello Motherfuckers!")
